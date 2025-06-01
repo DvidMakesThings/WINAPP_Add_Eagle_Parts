@@ -297,7 +297,7 @@ class EagleLibraryEditor(ctk.CTk):
                 msg = f"Deviceset '{new_name}' already exists.\n→ {updated} updated, {added} added."
                 if skipped_pkgs:
                     msg += "\nSkipped (missing fields): " + ", ".join(skipped_pkgs)
-                messagebox.showinfo("Success", msg)
+                # messagebox.showinfo("Success", msg)
 
             else:
                 new_ds = copy.deepcopy(template)
@@ -328,7 +328,7 @@ class EagleLibraryEditor(ctk.CTk):
                 msg = f"Created new deviceset '{new_name}' with {len(valid_pkgs)} package(s)."
                 if skipped_pkgs:
                     msg += "\nSkipped (missing fields): " + ", ".join(skipped_pkgs)
-                messagebox.showinfo("Success", msg)
+                # messagebox.showinfo("Success", msg)
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to add/update device:\n{e}")
