@@ -1,3 +1,5 @@
+# xml_handler.py
+
 import xml.etree.ElementTree as ET
 import copy
 
@@ -25,17 +27,16 @@ class XMLHandler:
         """
         Look for a <deviceset name="DEVICE_NAME">. If not found, return the first <deviceset>.
         """
-        root = tree.getroot()
+        root     = tree.getroot()
         ds_parent = root.find("./drawing/library/devicesets")
         if ds_parent is None:
             raise RuntimeError("<devicesets> not found in library.")
 
-        # Attempt to find deviceset named "DEVICE_NAME"
+        # Try to find the one named "DEVICE_NAME"
         for ds in ds_parent.findall("deviceset"):
             if ds.get("name") == "DEVICE_NAME":
                 return ds
 
-        # Otherwise, use the first deviceset found
         first = ds_parent.find("deviceset")
         if first is None:
             raise RuntimeError("No <deviceset> in library at all.")
@@ -45,9 +46,9 @@ class XMLHandler:
     def extract_template_devices(template_ds):
         """
         Given a <deviceset> element, extract all its <device> child nodes,
-        keyed by their @name (e.g. "0402", "0603", etc.).
-        Returns a dict: { "0402": <device element>, "0603": <device element>, … }.
-        A deep copy is used so we can reuse these nodes later.
+        keyed by their @name (e.g. "0402", "0603", etc.). Returns a dict:
+          { "0402": <device element>, "0603": <device element>, … }.
+        We deepcopy each so they can be re‐inserted later.
         """
         result = {}
         devs_parent = template_ds.find("devices")
@@ -57,7 +58,6 @@ class XMLHandler:
         for dev in devs_parent.findall("device"):
             name = dev.get("name")
             if name:
-                # Make a deep copy so we can insert it elsewhere later
                 result[name] = copy.deepcopy(dev)
         return result
 
@@ -66,7 +66,7 @@ class XMLHandler:
         """
         Return the <deviceset> element whose @name matches, or None if not found.
         """
-        root = tree.getroot()
+        root     = tree.getroot()
         ds_parent = root.find("./drawing/library/devicesets")
         if ds_parent is None:
             return None
@@ -80,9 +80,9 @@ class XMLHandler:
         """
         Merge the given pkg_names into an existing <deviceset> element.
         - existing_ds: the <deviceset> element to update
-        - pkg_names: list of package names to include (e.g. ["0402", "0603", …])
-        - template_devs: dict mapping package name → <device> template element
-        - valid_pkgs: dict mapping package name → { "value": …, "desc": …, "lcsc": … }
+        - pkg_names:   list of package names to include (["0402","0603",…])
+        - template_devs: dict mapping pkg name → <device> template element
+        - valid_pkgs: dict mapping pkg name → { "value": …, "desc": …, "lcsc": … }
 
         Returns (updated_count, added_count).
         """
@@ -94,11 +94,11 @@ class XMLHandler:
         if devs_parent is None:
             devs_parent = ET.SubElement(existing_ds, "devices")
 
-        # Build a quick lookup of existing <device> nodes by @name
-        existing_map = { dev.get("name"): dev for dev in devs_parent.findall("device") }
+        # Build lookup of existing <device> nodes by @name
+        existing_map = {dev.get("name"): dev for dev in devs_parent.findall("device")}
 
         for pkg_name in pkg_names:
-            vals = valid_pkgs[pkg_name]
+            vals  = valid_pkgs[pkg_name]
             value = vals["value"]
             desc  = vals["desc"]
             lcsc  = vals["lcsc"]
@@ -115,7 +115,7 @@ class XMLHandler:
                 if tech is None:
                     tech = ET.SubElement(tech_parent, "technology")
 
-                # For each attribute, set or update the value
+                # For each attribute, set or update its @value
                 XMLHandler._set_or_update_attribute(tech, "DESCRIPTION", desc)
                 XMLHandler._set_or_update_attribute(tech, "LCSC_PART", lcsc)
                 XMLHandler._set_or_update_attribute(tech, "VALUE", value)
@@ -130,7 +130,7 @@ class XMLHandler:
                     continue
 
                 new_dev = copy.deepcopy(template_dev)
-                new_dev.set("name", pkg_name)  # ensure correct name
+                new_dev.set("name", pkg_name)
 
                 # Inside the copied <device>, find or create <technologies><technology>
                 tech_parent = new_dev.find("technologies")
@@ -140,7 +140,7 @@ class XMLHandler:
                 if tech is None:
                     tech = ET.SubElement(tech_parent, "technology")
 
-                # Now set DESCRIPTION, LCSC_PART, VALUE
+                # Now set DESCRIPTION, LCSC_PART, VALUE (preserving spaces!)
                 XMLHandler._set_or_update_attribute(tech, "DESCRIPTION", desc)
                 XMLHandler._set_or_update_attribute(tech, "LCSC_PART", lcsc)
                 XMLHandler._set_or_update_attribute(tech, "VALUE", value)
@@ -154,43 +154,43 @@ class XMLHandler:
     def create_new_deviceset(tree, template_ds, new_name, pkg_names, valid_pkgs):
         """
         Create a new <deviceset> under <devicesets>, using template_ds’s <gates> and <symbol>.
-        - new_name: the name of the new deviceset
-        - pkg_names: list of package names to add
-        - valid_pkgs: dict mapping package name → { "value": …, "desc": …, "lcsc": … }
+        - new_name:   the name attribute of the new deviceset
+        - pkg_names:  list of package names to add
+        - valid_pkgs: dict mapping pkg name → { "value": …, "desc": …, "lcsc": … }
+
+        Returns the newly appended <deviceset> element.
         """
-        root = tree.getroot()
+        root      = tree.getroot()
         ds_parent = root.find("./drawing/library/devicesets")
         if ds_parent is None:
             # If <devicesets> does not exist, create it
-            ds_parent = root.find("./drawing/library")
-            if ds_parent is None:
+            lib_parent = root.find("./drawing/library")
+            if lib_parent is None:
                 raise RuntimeError("Cannot find <library> to create <devicesets> under.")
-            ds_parent = ET.SubElement(ds_parent, "devicesets")
+            ds_parent = ET.SubElement(lib_parent, "devicesets")
 
-        # Build new <deviceset> with same prefix/uservalue as template
+        # Build new <deviceset> with name=new_name
         new_ds = ET.SubElement(ds_parent, "deviceset")
         new_ds.set("name", new_name)
 
-        # Copy gates from template
+        # Copy <gates> from template
         gates_parent = template_ds.find("gates")
         if gates_parent is not None:
-            new_gates = copy.deepcopy(gates_parent)
-            new_ds.append(new_gates)
+            new_ds.append(copy.deepcopy(gates_parent))
 
-        # <devices> block
+        # Create <devices> block under new_ds
         new_devs_parent = ET.SubElement(new_ds, "devices")
 
-        # For each package, deep‐copy the template <device> node and set attributes
+        # Deep‐copy each <device> from the template map, then set its attributes
         template_dev_map = XMLHandler.extract_template_devices(template_ds)
         for pkg_name in pkg_names:
-            vals = valid_pkgs[pkg_name]
+            vals  = valid_pkgs[pkg_name]
             value = vals["value"]
             desc  = vals["desc"]
             lcsc  = vals["lcsc"]
 
             template_dev = template_dev_map.get(pkg_name)
             if template_dev is None:
-                # Skip if no template for this package
                 continue
 
             new_dev = copy.deepcopy(template_dev)
@@ -209,20 +209,19 @@ class XMLHandler:
 
             new_devs_parent.append(new_dev)
 
+        return new_ds
+
     @staticmethod
     def _set_or_update_attribute(tech_element, name, value):
         """
         Inside <technology>, find an <attribute name="…">.
-        If it exists, update its @value. If not, create it.
-        We assume 'tech_element' is the <technology> tag.
+        If found, update its @value. Otherwise create a fresh <attribute>.
+        We do NOT split 'value' on spaces—so "10nF 10V" remains intact.
         """
-        # Search existing <attribute> by matching @name
         for attr in tech_element.findall("attribute"):
             if attr.get("name") == name:
                 attr.set("value", value)
                 return
-
-        # If not found, create a new <attribute>
         new_attr = ET.SubElement(tech_element, "attribute")
         new_attr.set("name", name)
         new_attr.set("value", value)

@@ -1,5 +1,5 @@
 # Window size and resizability
-WINDOW_WIDTH = 900
+WINDOW_WIDTH = 1300
 WINDOW_HEIGHT = 650
 WINDOW_RESIZABLE = (True, True)
 
