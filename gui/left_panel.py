@@ -1,5 +1,3 @@
-# gui/left_panel.py
-
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
@@ -102,7 +100,6 @@ class ExistingDevicesPanel(ctk.CTkScrollableFrame):
             entry["inner_frame"].pack(fill="x", padx=(0,10))
             # 3) Notify parent that this ds_name is selected
             self.on_select(ds_name)
-
         else:
             # User unchecked this same device: just collapse it
             entry["inner_frame"].pack_forget()
